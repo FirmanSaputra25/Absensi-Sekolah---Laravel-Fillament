@@ -4,16 +4,17 @@ namespace App\Filament\Resources;
 
 use Filament\Tables;
 use App\Models\Absensi;
+use App\Exports\AbsensiExport;
 use Filament\Resources\Resource;
 use Filament\Tables\Filters\Filter;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Forms\Components\DatePicker;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\AbsensiExport;
-use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Filters\SelectFilter;
 use App\Filament\Resources\LaporanKehadiranResource\Pages;
-use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Enums\RecordCheckboxPosition;
+use App\Filament\Resources\LaporanKehadiranResource\Pages\ListLaporanKehadirans;
 
 class LaporanKehadiranResource extends Resource
 {
@@ -24,6 +25,7 @@ class LaporanKehadiranResource extends Resource
     public static function table(Tables\Table $table): Tables\Table
     {
         return $table
+            ->recordCheckboxPosition(null)
             ->columns([
                 TextColumn::make('murid.name')->label('Nama Murid')->sortable(),
                 TextColumn::make('murid.kelas')->label('Kelas')->sortable(),
@@ -33,8 +35,7 @@ class LaporanKehadiranResource extends Resource
             ->filters([
                 Filter::make('tanggal')
                     ->label('Filter Tanggal')
-                    ->form([DatePicker::make('tanggal')])
-                    ->query(fn(Builder $query, $data) => $query->when($data['tanggal'], fn($query) => $query->whereDate('tanggal', $data['tanggal']))),
+                    ->form([DatePicker::make('tanggal')]),
 
                 SelectFilter::make('status')
                     ->label('Filter Status')
@@ -43,8 +44,7 @@ class LaporanKehadiranResource extends Resource
                         'Sakit' => 'Sakit',
                         'Izin' => 'Izin',
                         'Alfa' => 'Alfa',
-                    ])
-                    ->query(fn(Builder $query, $data) => $query->when($data['status'], fn($query) => $query->where('status', $data['status']))),
+                    ]),
 
                 SelectFilter::make('murid.kelas')
                     ->label('Filter Kelas')
@@ -55,16 +55,14 @@ class LaporanKehadiranResource extends Resource
                         '11 IPS' => '11 IPS',
                         '12 IPA' => '12 IPA',
                         '12 IPS' => '12 IPS',
-                    ])
-                    ->query(fn(Builder $query, $data) => $query->when($data['murid.kelas'], fn($query) => $query->whereHas('murid', fn($q) => $q->where('kelas', $data['murid.kelas'])))),
+                    ]),
             ])
-            ->actions([
-                Action::make('export')
+            ->bulkActions([
+                BulkAction::make('export')
                     ->label('Export Excel')
-                    ->button()
-                    ->action(function ($data) {
-                        return Excel::download(new AbsensiExport($data), 'laporan-absensi.xlsx');
-                    }),
+                    ->icon('heroicon-m-arrow-down-tray')
+                    ->action(fn($records) => Excel::download(new AbsensiExport($records), 'laporan-absensi.xlsx'))
+                    ->deselectRecordsAfterCompletion(),
             ]);
     }
 
